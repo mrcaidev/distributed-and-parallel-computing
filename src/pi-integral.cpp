@@ -20,19 +20,11 @@ int main(int argc, char *argv[])
     }
     local /= iterations;
 
-    if (processId != 0)
-    {
-        MPI_Send(&local, 1, MPI_DOUBLE, 0, processId, MPI_COMM_WORLD);
-    }
-    else
-    {
-        double pi = local;
-        for (int id = 1; id < processCount; id++)
-        {
-            MPI_Recv(&local, 1, MPI_DOUBLE, id, id, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            pi += local;
-        }
+    double pi = 0.0;
+    MPI_Reduce(&local, &pi, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
+    if (processId == 0)
+    {
         double endTime = MPI_Wtime();
         printf("pi = %f, time = %f\n", pi, endTime - startTime);
     }

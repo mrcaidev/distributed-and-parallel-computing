@@ -88,8 +88,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            firstCompositeIndex = base - lowerBound % base;
-            firstCompositeIndex /= 2;
+            firstCompositeIndex = (base - lowerBound % base) / 2;
         }
 
         for (int i = firstCompositeIndex; i < size; i += base)

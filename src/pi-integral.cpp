@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     int iterations = 10000000;
     double local = 0.0;
 
-    double startTime = MPI_Wtime();
+    double elapsedTime = -MPI_Wtime();
 
     for (int i = processId; i < iterations; i += processCount)
     {
@@ -25,8 +25,8 @@ int main(int argc, char *argv[])
 
     if (processId == 0)
     {
-        double endTime = MPI_Wtime();
-        printf("pi = %f, time = %f\n", pi, endTime - startTime);
+        elapsedTime += MPI_Wtime();
+        printf("pi = %f, time = %f\n", pi, elapsedTime);
     }
 
     MPI_Finalize();

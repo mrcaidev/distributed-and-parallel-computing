@@ -26,10 +26,18 @@ int main(int argc, char *argv[])
     int n = atoi(argv[1]);
 
     int lowerBound = 2 + processId * (n - 1) / processCount;
-    int upperBound = 1 + (processId + 1) * (n - 1) / processCount;
-    int size = upperBound - lowerBound + 1;
+    if (lowerBound % 2 == 0)
+    {
+        lowerBound++;
+    }
 
-    if (2 + size < (int)sqrt((double)n))
+    int upperBound = 1 + (processId + 1) * (n - 1) / processCount;
+    if (upperBound % 2 == 0)
+    {
+        upperBound--;
+    }
+
+    if (2 + (n - 1) / processCount < (int)sqrt((double)n))
     {
         if (processId == 0)
         {
@@ -40,6 +48,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    int size = (upperBound - lowerBound) / 2 + 1;
     char *compositeFlags = (char *)malloc(size);
 
     if (compositeFlags == NULL)
@@ -64,14 +73,14 @@ int main(int argc, char *argv[])
         currentPrimeIndex = 0;
     }
 
-    int base = 2;
+    int base = 3;
     do
     {
         int firstCompositeIndex = 0;
 
         if (base * base > lowerBound)
         {
-            firstCompositeIndex = base * base - lowerBound;
+            firstCompositeIndex = (base * base - lowerBound) / 2;
         }
         else if (lowerBound % base == 0)
         {
@@ -80,6 +89,7 @@ int main(int argc, char *argv[])
         else
         {
             firstCompositeIndex = base - lowerBound % base;
+            firstCompositeIndex /= 2;
         }
 
         for (int i = firstCompositeIndex; i < size; i += base)
@@ -91,7 +101,7 @@ int main(int argc, char *argv[])
         {
             while (compositeFlags[++currentPrimeIndex])
                 ;
-            base = currentPrimeIndex + 2;
+            base = 2 * currentPrimeIndex + 3;
         }
 
         if (processCount > 1)
@@ -114,6 +124,7 @@ int main(int argc, char *argv[])
     {
         MPI_Reduce(&count, &globalCount, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     }
+    globalCount++;
 
     elapsedTime += MPI_Wtime();
 

@@ -1,7 +1,8 @@
 #include "mpi.h"
 #include <math.h>
 #include <stdio.h>
-#include <stdbool.h>
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 int main(int argc, char *argv[])
 {
@@ -30,6 +31,65 @@ int main(int argc, char *argv[])
     // 从命令行参数中解析出 n。
     int n = atoi(argv[1]);
 
+    // 如果进程数过多，就退出。
+    if (2 + (n - 1) / processCount < (int)sqrt((double)n))
+    {
+        if (processId == 0)
+        {
+            printf("Too many processes\n");
+        }
+
+        MPI_Finalize();
+        exit(1);
+    }
+
+    // 每个进程各自找出 [3, sqrt(n)] 的素数，用作后续筛选的基数。
+    int sqrtN = (int)sqrt((double)n);
+    int subLowerBound = 3;
+    int subUpperBound = sqrtN % 2 == 0 ? sqrtN - 1 : sqrtN;
+
+    // 创建标记数组，用于标记 [3, sqrt(n)] 的每个奇数是否为合数。
+    int subSize = (subUpperBound - subLowerBound) / 2 + 1;
+    bool *subCompositeFlags = (bool *)malloc(subSize);
+
+    // 如果内存不足，就退出。
+    if (subCompositeFlags == NULL)
+    {
+        if (processId == 0)
+        {
+            printf("Cannot allocate enough memory\n");
+        }
+
+        MPI_Finalize();
+        exit(1);
+    }
+
+    // 初始化标记数组全为 false。
+    for (int flagIndex = 0; flagIndex < subSize; flagIndex++)
+    {
+        subCompositeFlags[flagIndex] = false;
+    }
+
+    // 从 3 为基数开始，检查每个奇数是否为基数的倍数。
+    for (int flagIndex = 0; flagIndex < subSize; flagIndex++)
+    {
+        // 如果当前基数已被标记为合数，则跳过。
+        if (subCompositeFlags[flagIndex] == true)
+        {
+            continue;
+        }
+
+        // 找到第一个当前基数的倍数。
+        int base = flagIndex * 2 + 3;
+        int firstMultipleIndex = (base * base - subLowerBound) / 2;
+
+        // 把所有当前基数的倍数都标记为合数。
+        for (int multipleIndex = firstMultipleIndex; multipleIndex < subSize; multipleIndex += base)
+        {
+            subCompositeFlags[multipleIndex] = true;
+        }
+    };
+
     // 计算当前进程的负责范围的下界。
     int lowerBound = 2 + processId * (n - 1) / processCount;
     if (lowerBound % 2 == 0)
@@ -42,18 +102,6 @@ int main(int argc, char *argv[])
     if (upperBound % 2 == 0)
     {
         upperBound--;
-    }
-
-    // 如果进程数过多，就退出。
-    if (2 + (n - 1) / processCount < (int)sqrt((double)n))
-    {
-        if (processId == 0)
-        {
-            printf("Too many processes\n");
-        }
-
-        MPI_Finalize();
-        exit(1);
     }
 
     // 创建标记数组，用于标记负责范围内的每个奇数是否为合数。
@@ -72,25 +120,23 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // 初始化标记数组全为 0。
-    for (int i = 0; i < size; i++)
+    // 初始化标记数组全为 false。
+    for (int flagIndex = 0; flagIndex < size; flagIndex++)
     {
-        compositeFlags[i] = 0;
-    }
-
-    // 进程 0 需要掌握它负责范围内的、尚未处理的、最小素数的索引。
-    int currentPrimeIndex;
-    if (processId == 0)
-    {
-        currentPrimeIndex = 0;
+        compositeFlags[flagIndex] = false;
     }
 
     // 从 3 为基数开始，检查每个奇数是否为基数的倍数。
-    // 如果是，则将其标记为合数。
-    int base = 3;
-    do
+    for (int flagIndex = 0; flagIndex < subSize; flagIndex++)
     {
+        // 如果当前基数已被标记为合数，则跳过。
+        if (subCompositeFlags[flagIndex] == true)
+        {
+            continue;
+        }
+
         // 找到范围内第一个当前基数的倍数。
+        int base = flagIndex * 2 + 3;
         int firstMultipleIndex = 0;
         if (base * base > lowerBound)
         {
@@ -111,31 +157,17 @@ int main(int argc, char *argv[])
         }
 
         // 把范围内所有当前基数的倍数都标记为合数。
-        for (int i = firstMultipleIndex; i < size; i += base)
+        for (int multipleIndex = firstMultipleIndex; multipleIndex < size; multipleIndex += base)
         {
-            compositeFlags[i] = 1;
+            compositeFlags[multipleIndex] = true;
         }
-
-        // 进程 0 更新最小素数的索引，并依此计算下一个基数。
-        if (processId == 0)
-        {
-            while (compositeFlags[++currentPrimeIndex])
-                ;
-            base = 2 * currentPrimeIndex + 3;
-        }
-
-        // 其它进程从进程 0 的广播得知下一个基数。
-        if (processCount > 1)
-        {
-            MPI_Bcast(&base, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        }
-    } while (base * base <= n);
+    };
 
     // 计算范围内的素数个数。
     int count = 0;
-    for (int i = 0; i < size; i++)
+    for (int flagIndex = 0; flagIndex < size; flagIndex++)
     {
-        if (compositeFlags[i] == 0)
+        if (compositeFlags[flagIndex] == 0)
         {
             count++;
         }

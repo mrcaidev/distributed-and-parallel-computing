@@ -101,7 +101,12 @@ int main(int argc, char *argv[])
         }
         else
         {
-            firstMultipleIndex = (base - lowerBound % base) / 2;
+            firstMultipleIndex = base - lowerBound % base;
+            if ((lowerBound + firstMultipleIndex) % 2 == 0)
+            {
+                firstMultipleIndex += base;
+            }
+            firstMultipleIndex /= 2;
         }
 
         // 把范围内所有当前基数的倍数都标记为合数。

@@ -2,8 +2,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 int main(int argc, char *argv[])
 {
     // 初始化 MPI 环境。

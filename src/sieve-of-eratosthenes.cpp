@@ -1,6 +1,7 @@
 #include "mpi.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 int main(int argc, char *argv[])
 {
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
 
     // 创建标记数组，用于标记负责范围内的每个奇数是否为合数。
     int size = (upperBound - lowerBound) / 2 + 1;
-    char *compositeFlags = (char *)malloc(size);
+    bool *compositeFlags = (bool *)malloc(size);
 
     // 如果内存不足，就退出。
     if (compositeFlags == NULL)

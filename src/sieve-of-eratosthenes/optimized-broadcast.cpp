@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     for (int flagIndex = 0; flagIndex < subSize; flagIndex++)
     {
         // 如果当前基数已被标记为合数，则跳过。
-        if (subCompositeFlags[flagIndex] == true)
+        if (subCompositeFlags[flagIndex])
         {
             continue;
         }
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
     int count = 0;
     for (int flagIndex = 0; flagIndex < size; flagIndex++)
     {
-        if (compositeFlags[flagIndex] == 0)
+        if (!compositeFlags[flagIndex])
         {
             count++;
         }

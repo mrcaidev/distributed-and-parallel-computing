@@ -53,11 +53,7 @@ int main(int argc, char *argv[])
     // 如果内存不足，就退出。
     if (subCompositeFlags == NULL)
     {
-        if (processId == 0)
-        {
-            printf("Cannot allocate enough memory\n");
-        }
-
+        printf("Cannot allocate enough memory\n");
         MPI_Finalize();
         exit(1);
     }
@@ -120,11 +116,7 @@ int main(int argc, char *argv[])
     // 如果内存不足，就退出。
     if (compositeFlags == NULL)
     {
-        if (processId == 0)
-        {
-            printf("Cannot allocate enough memory\n");
-        }
-
+        printf("Cannot allocate enough memory\n");
         MPI_Finalize();
         exit(1);
     }

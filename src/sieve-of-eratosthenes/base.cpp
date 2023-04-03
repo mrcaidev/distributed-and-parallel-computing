@@ -1,26 +1,23 @@
-/**
- * This file is given by the professor.
- * Do not modify this file without knowing what you are doing.
- */
-
 #include "mpi.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define LL long long
 
 int main(int argc, char *argv[])
 {
-    int count;           /* Local prime count */
+    LL count;            /* Local prime count */
     double elapsed_time; /* Parallel execution time */
     int first;           /* Index of first multiple */
-    int global_count;    /* Global prime count */
-    int high_value;      /* Highest value on this proc */
+    LL global_count = 0; /* Global prime count */
+    LL high_value;       /* Highest value on this proc */
     int i;
     int id;         /* Process ID number */
     int index;      /* Index of current prime */
-    int low_value;  /* Lowest value on this proc */
+    LL low_value;   /* Lowest value on this proc */
     char *marked;   /* Portion of 2,...,'n' */
-    int n;          /* Sieving from 2, ..., 'n' */
+    LL n;           /* Sieving from 2, ..., 'n' */
     int p;          /* Number of processes */
     int proc0_size; /* Size of proc 0's subarray */
     int prime;      /* Current prime */
@@ -43,7 +40,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    n = atoi(argv[1]);
+    n = atoll(argv[1]);
 
     /* Figure out this process's share of the array, as
        well as the integers represented by the first and
@@ -108,8 +105,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < size; i++)
         if (!marked[i])
             count++;
-    if (p > 1)
-        MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM,
+               0, MPI_COMM_WORLD);
 
     /* Stop the timer */
 
@@ -119,7 +116,8 @@ int main(int argc, char *argv[])
 
     if (!id)
     {
-        printf("There are %d primes less than or equal to %d\n", global_count, n);
+        printf("There are %lld primes less than or equal to %lld\n",
+               global_count, n);
         printf("SIEVE (%d) %10.6f\n", p, elapsed_time);
     }
     MPI_Finalize();

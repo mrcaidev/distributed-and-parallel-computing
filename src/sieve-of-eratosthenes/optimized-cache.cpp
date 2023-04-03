@@ -44,18 +44,6 @@ int main(int argc, char *argv[])
     // 从命令行参数中解析出 n。
     LL n = convertCharToLongLong(argv[1]);
 
-    // 如果进程数过多，就退出。
-    if (2 + (n - 1) / processCount < (LL)sqrt(n))
-    {
-        if (processId == 0)
-        {
-            printf("Too many processes\n");
-        }
-
-        MPI_Finalize();
-        exit(1);
-    }
-
     // 每个进程各自找出 [3, sqrt(n)] 的素数，用作后续筛选的基数。
     LL sqrtN = (LL)sqrt(n);
     LL subLowerBound = 3;

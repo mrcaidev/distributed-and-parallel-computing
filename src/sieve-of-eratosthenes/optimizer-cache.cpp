@@ -5,18 +5,6 @@
 
 #define LL long long
 
-LL convertCharToLongLong(char *str)
-{
-    LL result = 0;
-    int index = 0;
-    while (str[index] != '\0')
-    {
-        result = result * 10 + str[index] - '0';
-        index++;
-    }
-    return result;
-}
-
 int main(int argc, char *argv[])
 {
     // 初始化 MPI 环境。
@@ -42,7 +30,7 @@ int main(int argc, char *argv[])
     }
 
     // 从命令行参数中解析出 n。
-    LL n = convertCharToLongLong(argv[1]);
+    LL n = atoll(argv[1]);
 
     // 每个进程各自找出 [3, sqrt(n)] 的素数，用作后续筛选的基数。
     LL sqrtN = (LL)sqrt(n);

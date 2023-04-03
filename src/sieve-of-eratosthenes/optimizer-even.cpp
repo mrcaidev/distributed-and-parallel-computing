@@ -1,6 +1,9 @@
 #include "mpi.h"
 #include <math.h>
+#include <cstring>
 #include <stdio.h>
+
+#define LL long long
 
 int main(int argc, char *argv[])
 {
@@ -27,10 +30,10 @@ int main(int argc, char *argv[])
     }
 
     // 从命令行参数中解析出 n。
-    int n = atoi(argv[1]);
+    LL n = atoll(argv[1]);
 
-    // 如果进程数过多，就退出。
-    if (2 + (n - 1) / processCount < (int)sqrt((double)n))
+    // 如果进程 0 不拥有 sqrt(n) 内的所有素数，就退出。
+    if (2 + (n - 1) / processCount < (LL)sqrt(n))
     {
         if (processId == 0)
         {
@@ -42,21 +45,21 @@ int main(int argc, char *argv[])
     }
 
     // 计算当前进程的负责范围的下界。
-    int lowerBound = 2 + processId * (n - 1) / processCount;
+    LL lowerBound = 2 + processId * (n - 1) / processCount;
     if (lowerBound % 2 == 0)
     {
         lowerBound++;
     }
 
     // 计算当前进程的负责范围的上界。
-    int upperBound = 1 + (processId + 1) * (n - 1) / processCount;
+    LL upperBound = 1 + (processId + 1) * (n - 1) / processCount;
     if (upperBound % 2 == 0)
     {
         upperBound--;
     }
 
     // 创建标记数组，用于标记负责范围内的每个奇数是否为合数。
-    int size = (upperBound - lowerBound) / 2 + 1;
+    LL size = (upperBound - lowerBound) / 2 + 1;
     bool *compositeFlags = (bool *)malloc(size);
 
     // 如果内存不足，就退出。
@@ -68,20 +71,17 @@ int main(int argc, char *argv[])
     }
 
     // 初始化标记数组全为 false。
-    for (int flagIndex = 0; flagIndex < size; flagIndex++)
-    {
-        compositeFlags[flagIndex] = false;
-    }
+    memset(compositeFlags, 0, size);
 
     // 进程 0 需要掌握它负责范围内的、尚未处理的、最小素数的索引。
-    int currentPrimeIndex = 0;
+    LL currentPrimeIndex = 0;
 
     // 从 3 为基数开始，检查每个奇数是否为基数的倍数。
-    int base = 3;
+    LL base = 3;
     do
     {
         // 找到范围内第一个当前基数的倍数。
-        int firstMultipleIndex = 0;
+        LL firstMultipleIndex = 0;
         if (base * base > lowerBound)
         {
             firstMultipleIndex = (base * base - lowerBound) / 2;
@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
         }
 
         // 把范围内所有当前基数的倍数都标记为合数。
-        for (int i = firstMultipleIndex; i < size; i += base)
+        for (LL multipleIndex = firstMultipleIndex; multipleIndex < size; multipleIndex += base)
         {
-            compositeFlags[i] = true;
+            compositeFlags[multipleIndex] = true;
         }
 
         // 进程 0 更新最小素数的索引，并依此计算下一个基数。
@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
     } while (base * base <= n);
 
     // 计算范围内的素数个数。
-    int count = 0;
-    for (int flagIndex = 0; flagIndex < size; flagIndex++)
+    LL count = 0;
+    for (LL flagIndex = 0; flagIndex < size; flagIndex++)
     {
         if (!compositeFlags[flagIndex])
         {
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     }
 
     // 进程间通信，计算总素数个数。
-    int globalCount = 0;
+    LL globalCount = 0;
     if (processCount > 1)
     {
         MPI_Reduce(&count, &globalCount, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     // 进程 0 输出结果。
     if (processId == 0)
     {
-        printf("There are %d primes less than or equal to %d\n", globalCount, n);
+        printf("There are %lld primes less than or equal to %lld\n", globalCount, n);
         printf("SIEVE (%d) %10.6f\n", processCount, elapsedTime);
     }
 

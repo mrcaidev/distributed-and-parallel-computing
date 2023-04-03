@@ -1,5 +1,6 @@
 #include "mpi.h"
 #include <math.h>
+#include <cstring>
 #include <stdio.h>
 
 #define LL long long
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    // 初始化标记数组全为 false。
     memset(subCompositeFlags, 0, subSize);
 
     // 从 3 为基数开始，检查每个奇数是否为基数的倍数。

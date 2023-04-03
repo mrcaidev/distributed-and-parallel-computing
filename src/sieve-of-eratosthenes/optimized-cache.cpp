@@ -73,8 +73,14 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        // 找到第一个当前基数的倍数。
+        // 如果基数大于 sqrt(sqrt(n))，那么它的所有倍数都已经被小于基数的素数标记过了。
         LL base = flagIndex * 2 + 3;
+        if (base * base > sqrtN)
+        {
+            break;
+        }
+
+        // 找到第一个当前基数的倍数。
         LL firstMultipleIndex = (base * base - subLowerBound) / 2;
 
         // 把所有当前基数的倍数都标记为合数。

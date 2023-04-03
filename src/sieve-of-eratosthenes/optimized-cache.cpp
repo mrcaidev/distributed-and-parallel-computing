@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
             LL firstMultipleIndex = 0;
             if (base * base > blockLowerBound)
             {
-                firstMultipleIndex = ((LL)base * base - blockLowerBound) / 2;
+                firstMultipleIndex = (base * base - blockLowerBound) / 2;
             }
             else if (blockLowerBound % base == 0)
             {

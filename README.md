@@ -10,13 +10,6 @@
     - 消除广播
     - 提高 cache 命中率
 
-## ⚠️ 项目声明
+## 📄 许可证
 
-1. 本项目主要用于个人学习的记录、总结与存档，不保证其正确性、完整性与安全性。
-2. 欢迎适度的借鉴与参考，但不提倡无脑的复制与抄袭。
-3. 允许在公开文章中转载、引用本项目内容，但请使用超链接注明作者与出处。
-4. 仅供学习交流使用，请勿用于商业用途，否则后果自负。
-
-## 📜 许可证
-
-[MIT](LICENSE)
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/)

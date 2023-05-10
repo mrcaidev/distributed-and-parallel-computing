@@ -38,7 +38,7 @@ void randomizeBodies(float *data, int n)
 
 __global__ void bodyForce(Body *p, float dt, int n)
 {
-
+    // 计算本线程负责的 body 下标。
     int i = threadIdx.x + blockIdx.x / BLOCK_SIZE * blockDim.x;
 
     if (i >= n)
@@ -46,7 +46,8 @@ __global__ void bodyForce(Body *p, float dt, int n)
         return;
     }
 
-    __shared__ float3 cache[BLOCK_SIZE];
+    // 块级共享内存，用于加速该块内所有线程的受力计算。
+    __shared__ float3 tile[BLOCK_SIZE];
 
     float Fx = 0.0f;
     float Fy = 0.0f;
@@ -54,16 +55,19 @@ __global__ void bodyForce(Body *p, float dt, int n)
 
     for (int k = blockIdx.x % BLOCK_SIZE; k < n / BLOCK_SIZE; k += BLOCK_SIZE)
     {
-        Body applier = p[k * BLOCK_SIZE + threadIdx.x];
-        cache[threadIdx.x] = make_float3(applier.x, applier.y, applier.z);
+        // 向共享内存装入新一批 body。
+        Body temp = p[k * BLOCK_SIZE + threadIdx.x];
+        tile[threadIdx.x] = make_float3(temp.x, temp.y, temp.z);
 
-        // __syncthreads();
+        // 等待所有线程装入完毕。
+        __syncthreads();
 
+        // 叠加计算共享内存内所有 body 施加的力。
         for (int j = 0; j < BLOCK_SIZE; j++)
         {
-            float dx = cache[j].x - p[i].x;
-            float dy = cache[j].y - p[i].y;
-            float dz = cache[j].z - p[i].z;
+            float dx = tile[j].x - p[i].x;
+            float dy = tile[j].y - p[i].y;
+            float dz = tile[j].z - p[i].z;
             float distSqr = dx * dx + dy * dy + dz * dz + SOFTENING;
             float invDist = rsqrtf(distSqr);
             float invDist3 = invDist * invDist * invDist;
@@ -73,9 +77,11 @@ __global__ void bodyForce(Body *p, float dt, int n)
             Fz += dz * invDist3;
         }
 
-        // __syncthreads();
+        // 等待所有线程使用完共享内存内的 body。
+        __syncthreads();
     }
 
+    // 用原子计算更新速度，避免竞态问题。
     atomicAdd(&p[i].vx, dt * Fx);
     atomicAdd(&p[i].vy, dt * Fy);
     atomicAdd(&p[i].vz, dt * Fz);
@@ -120,7 +126,6 @@ int main(const int argc, const char **argv)
 
     int bytes = nBodies * sizeof(Body);
     float *buf;
-
     cudaMallocHost(&buf, bytes);
 
     /*
@@ -129,15 +134,15 @@ int main(const int argc, const char **argv)
 
     randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
 
+    float *d_buf;
+    cudaMalloc(&d_buf, bytes);
+
+    Body *d_p = (Body *)d_buf;
+    cudaMemcpy(d_buf, buf, bytes, cudaMemcpyHostToDevice);
+
+    int nBlocks = (nBodies - 1) / BLOCK_SIZE + 1;
+
     double totalTime = 0.0;
-
-    int nBlocks = (nBodies + BLOCK_SIZE - 1) / BLOCK_SIZE;
-
-    float *dBuf;
-    cudaMalloc(&dBuf, bytes);
-
-    Body *dp = (Body *)dBuf;
-    cudaMemcpy(dBuf, buf, bytes, cudaMemcpyHostToDevice);
 
     /*
      * This simulation will run for 10 cycles of time, calculating gravitational
@@ -145,7 +150,7 @@ int main(const int argc, const char **argv)
      */
 
     /*******************************************************************/
-    // Do not modify these 2 lines of code.gg
+    // Do not modify these 2 lines of code.
     for (int iter = 0; iter < nIters; iter++)
     {
         StartTimer();
@@ -156,17 +161,18 @@ int main(const int argc, const char **argv)
          * as well as the work to integrate the positions.
          */
 
-        bodyForce<<<nBlocks * BLOCK_SIZE, BLOCK_SIZE>>>(dp, dt, nBodies); // compute interbody forces
+        bodyForce<<<nBodies, BLOCK_SIZE>>>(d_p, dt, nBodies); // compute interbody forces
 
         /*
          * This position integration cannot occur until this round of `bodyForce` has completed.
          * Also, the next round of `bodyForce` cannot begin until the integration is complete.
          */
-        integratePosition<<<nBodies / BLOCK_SIZE, BLOCK_SIZE>>>(dp, dt, nBodies);
+
+        integratePosition<<<nBlocks, BLOCK_SIZE>>>(d_p, dt, nBodies);
 
         if (iter == nIters - 1)
         {
-            cudaMemcpy(buf, dBuf, bytes, cudaMemcpyDeviceToHost);
+            cudaMemcpy(buf, d_buf, bytes, cudaMemcpyDeviceToHost);
         }
 
         /*******************************************************************/
@@ -191,6 +197,6 @@ int main(const int argc, const char **argv)
      * Feel free to modify code below.
      */
 
-    cudaFree(dBuf);
+    cudaFree(d_buf);
     cudaFreeHost(buf);
 }

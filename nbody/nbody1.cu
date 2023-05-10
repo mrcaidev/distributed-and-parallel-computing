@@ -38,6 +38,7 @@ void randomizeBodies(float *data, int n)
 
 __global__ void bodyForce(Body *p, float dt, int n)
 {
+    // 计算本线程负责的 body 下标。
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
     if (i >= n)
@@ -49,6 +50,7 @@ __global__ void bodyForce(Body *p, float dt, int n)
     float Fy = 0.0f;
     float Fz = 0.0f;
 
+    // 叠加计算所有 body 施加的力。
     for (int j = 0; j < n; j++)
     {
         float dx = p[j].x - p[i].x;
@@ -63,6 +65,7 @@ __global__ void bodyForce(Body *p, float dt, int n)
         Fz += dz * invDist3;
     }
 
+    // 更新速度。
     p[i].vx += dt * Fx;
     p[i].vy += dt * Fy;
     p[i].vz += dt * Fz;
@@ -107,10 +110,7 @@ int main(const int argc, const char **argv)
 
     int bytes = nBodies * sizeof(Body);
     float *buf;
-
-    cudaMallocManaged(&buf, bytes);
-
-    Body *p = (Body *)buf;
+    cudaMallocHost(&buf, bytes);
 
     /*
      * As a constraint of this exercise, `randomizeBodies` must remain a host function.
@@ -118,9 +118,15 @@ int main(const int argc, const char **argv)
 
     randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
 
-    double totalTime = 0.0;
+    float *d_buf;
+    cudaMalloc(&d_buf, bytes);
 
-    int nBlocks = (nBodies + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    Body *d_p = (Body *)d_buf;
+    cudaMemcpy(d_buf, buf, bytes, cudaMemcpyHostToDevice);
+
+    int nBlocks = (nBodies - 1) / BLOCK_SIZE + 1;
+
+    double totalTime = 0.0;
 
     /*
      * This simulation will run for 10 cycles of time, calculating gravitational
@@ -139,17 +145,18 @@ int main(const int argc, const char **argv)
          * as well as the work to integrate the positions.
          */
 
-        bodyForce<<<nBlocks, BLOCK_SIZE>>>(p, dt, nBodies); // compute interbody forces
+        bodyForce<<<nBlocks, BLOCK_SIZE>>>(d_p, dt, nBodies); // compute interbody forces
 
         /*
          * This position integration cannot occur until this round of `bodyForce` has completed.
          * Also, the next round of `bodyForce` cannot begin until the integration is complete.
          */
-        integratePosition<<<nBlocks, BLOCK_SIZE>>>(p, dt, nBodies);
+
+        integratePosition<<<nBlocks, BLOCK_SIZE>>>(d_p, dt, nBodies);
 
         if (iter == nIters - 1)
         {
-            cudaDeviceSynchronize();
+            cudaMemcpy(buf, d_buf, bytes, cudaMemcpyDeviceToHost);
         }
 
         /*******************************************************************/
@@ -174,5 +181,6 @@ int main(const int argc, const char **argv)
      * Feel free to modify code below.
      */
 
-    cudaFree(buf);
+    cudaFree(d_buf);
+    cudaFreeHost(buf);
 }

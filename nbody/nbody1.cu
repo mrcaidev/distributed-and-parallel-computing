@@ -6,7 +6,7 @@
 #include <cuda_runtime.h>
 
 #define SOFTENING 1e-9f
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 128
 
 /*
  * Each body contains x, y, and z coordinate positions,
@@ -38,8 +38,8 @@ void randomizeBodies(float *data, int n)
 
 __global__ void bodyForce(Body *p, float dt, int n)
 {
-    // 计算本线程负责的 body 下标。
-    int i = threadIdx.x + blockDim.x * blockIdx.x;
+    // 计算本线程负责的物体的下标。
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (i >= n)
     {
@@ -50,7 +50,7 @@ __global__ void bodyForce(Body *p, float dt, int n)
     float Fy = 0.0f;
     float Fz = 0.0f;
 
-    // 叠加计算所有 body 施加的力。
+    // 叠加所有物体施加在负责物体上的引力。
     for (int j = 0; j < n; j++)
     {
         float dx = p[j].x - p[i].x;
@@ -73,13 +73,15 @@ __global__ void bodyForce(Body *p, float dt, int n)
 
 __global__ void integratePosition(Body *p, float dt, int n)
 {
-    int i = threadIdx.x + blockDim.x * blockIdx.x;
+    // 计算本线程负责的物体的下标。
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (i >= n)
     {
         return;
     }
 
+    // 更新坐标。
     p[i].x += p[i].vx * dt;
     p[i].y += p[i].vy * dt;
     p[i].z += p[i].vz * dt;
@@ -120,11 +122,10 @@ int main(const int argc, const char **argv)
 
     float *d_buf;
     cudaMalloc(&d_buf, bytes);
-
     Body *d_p = (Body *)d_buf;
     cudaMemcpy(d_buf, buf, bytes, cudaMemcpyHostToDevice);
 
-    int nBlocks = (nBodies - 1) / BLOCK_SIZE + 1;
+    int nBlocks = nBodies / BLOCK_SIZE;
 
     double totalTime = 0.0;
 
